@@ -12,13 +12,13 @@ provider "aws" {
 Network Configuration
 *******************************************************************************/
 # TODO: customized VPC and subnet
-data "aws_vpc" "default_vpc" {
-  id = var.vpc_id
+data "aws_vpc" "default" {
+  default = true
 }
 
-# data "aws_subnet_ids" "default_subnet" {
-#   vpc_id      = data.aws_vpc.default_vpc.id
-# }
+data "aws_subnet_ids" "all" {
+  vpc_id = data.aws_vpc.default.id
+}
 
 # TODO: ingress cidr block
 module "ssh_sg" {
@@ -27,7 +27,7 @@ module "ssh_sg" {
   name        = "ssh"
   description = "Security group for web-server with HTTP ports open within VPC"
 
-  vpc_id      = data.aws_vpc.default_vpc.id
+  vpc_id              = data.aws_vpc.default.id
   ingress_cidr_blocks = ["0.0.0.0/0"]
 }
 
@@ -37,7 +37,7 @@ module "http_sg" {
   name        = "http"
   description = "Security group for ssh-server with SSH ports open within VPC"
 
-  vpc_id      = data.aws_vpc.default_vpc.id
+  vpc_id              = data.aws_vpc.default.id
   ingress_cidr_blocks = ["0.0.0.0/0"]
 }
 
@@ -47,7 +47,7 @@ module "https_sg" {
   name        = "https"
   description = "Security group for web-server with HTTPS ports open within VPC"
 
-  vpc_id      = data.aws_vpc.default_vpc.id
+  vpc_id              = data.aws_vpc.default.id
   ingress_cidr_blocks = ["0.0.0.0/0"]
 }
 
@@ -57,7 +57,7 @@ module "postgresql_sg" {
   name        = "postgresql"
   description = "Security group for database with Postgresql ports open within VPC"
 
-  vpc_id      = data.aws_vpc.default_vpc.id
+  vpc_id              = data.aws_vpc.default.id
   ingress_cidr_blocks = ["0.0.0.0/0"]
 }
 
@@ -67,7 +67,7 @@ module "redis-sg" {
   name        = "redis"
   description = "Security group for cache service with redis ports open within VPC"
 
-  vpc_id      = data.aws_vpc.default_vpc.id
+  vpc_id              = data.aws_vpc.default.id
   ingress_cidr_blocks = ["0.0.0.0/0"]
 }
 
@@ -103,13 +103,13 @@ module "fitstop_backend" {
 
   # network related
   associate_public_ip_address = true
-  vpc_security_group_ids = [module.ssh_sg.this_security_group_id, module.http_sg.this_security_group_id]
-  subnet_id = var.subnet_id
-  
+  vpc_security_group_ids      = [module.ssh_sg.this_security_group_id, module.http_sg.this_security_group_id]
+  subnet_id                   = tolist(data.aws_subnet_ids.all.ids)[0]
+
   # TODO:customized script
   # user_data = var.bootstrap_script
   tags = {
-    Name = var.backend_name
+    Name        = var.backend_name
     Environment = var.enviroment
   }
 }
@@ -126,13 +126,13 @@ module "fitstop_scheduler" {
 
   # network related
   associate_public_ip_address = true
-  vpc_security_group_ids = [module.ssh_sg.this_security_group_id]
-  subnet_id = var.subnet_id
+  vpc_security_group_ids      = [module.ssh_sg.this_security_group_id]
+  subnet_id                   = tolist(data.aws_subnet_ids.all.ids)[0]
 
   # TODO:customized script
   # user_data = var.bootstrap_script
   tags = {
-    Name = var.scheduler_name
+    Name        = var.scheduler_name
     Environment = var.enviroment
   }
 }

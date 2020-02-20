@@ -67,16 +67,6 @@ variable "ssh_public_key" {
   description = "SSH public key"
 }
 
-variable "vpc_id" {
-  type        = string
-  description = "VPC id"
-}
-
-variable "subnet_id" {
-  type        = string
-  description = "Subnet id"
-}
-
 variable "enviroment" {
   type        = string
   description = "Application runtime enviroment"
