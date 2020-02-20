@@ -67,10 +67,10 @@ variable "ssh_key_name" {
   description = "SSH key name"
 }
 
-variable "ssh_public_key" {
+variable "public_key_path" {
   type        = string
-  default     = "keypairs/ssh.pub"
-  description = "SSH public key"
+  default     = "keypairs"
+  description = "SSH public key path"
 }
 
 variable "environment" {
@@ -78,12 +78,12 @@ variable "environment" {
   description = "Application runtime environment"
 }
 
-variable "project" {
+variable "application" {
   type        = string
-  description = "project name"
+  description = "application name"
 }
 
 variable "organization" {
   type        = string
-  description = "company name"
+  description = "organization name"
 }

@@ -1,8 +1,8 @@
 provider "aws" {
   region = var.region
-  # using credential from aws configure profile
+  // using credential from aws configure profile
   # profile = "fitstop"
-  # static credential
+  // static credential
   access_key = var.aws_id
   secret_key = var.aws_secret
 }
@@ -35,25 +35,29 @@ LoadBalancer: ELB
 /*******************************************************************************
 Application Server
 *******************************************************************************/
-resource "aws_key_pair" "ssh" {
-  key_name   = var.ssh_key_name
-  public_key = file(var.ssh_public_key)
+module "key_pair" {
+  source  = "cloudposse/key-pair/aws"
+  version = "0.9.0"
+
+  name                = var.ssh_key_name
+  ssh_public_key_path = var.public_key_path
+  generate_ssh_key    = false
 }
+
 
 module "fitstop_backend" {
   source  = "cloudposse/ec2-instance/aws"
   version = "0.14.0"
 
-  namespace     = var.organization
+  namespace     = var.application
   name          = var.backend_name
   instance_type = var.backend_type
-  ssh_key_pair  = aws_key_pair.ssh.key_name
+  ssh_key_pair  = module.key_pair.key_name
   ami           = lookup(var.amis, var.region)
   ami_owner     = "099720109477"
-  environment   = var.project
   stage         = var.environment
 
-  # network related
+  // network related
   allowed_ports               = [22, 80, 443]
   associate_public_ip_address = true
   additional_ips_count        = var.eip_count
@@ -61,25 +65,28 @@ module "fitstop_backend" {
   subnet                      = tolist(data.aws_subnet_ids.all.ids)[0]
   vpc_id                      = data.aws_vpc.default.id
 
-  # block storage
+  // block storage
   ebs_volume_count = var.ebs_count
   ebs_volume_size  = var.ebs_size
 
-  # TODO:customized script
+  // TODO:customized script
   # user_data = var.bootstrap_script
+
+  tags = {
+    Name = var.backend_name
+  }
 }
 
 module "fitstop_scheduler" {
   source  = "cloudposse/ec2-instance/aws"
   version = "0.14.0"
 
-  namespace     = var.organization
+  namespace     = var.application
   name          = var.scheduler_name
   instance_type = var.scheduler_type
-  ssh_key_pair  = aws_key_pair.ssh.key_name
+  ssh_key_pair  = module.key_pair.key_name
   ami           = lookup(var.amis, var.region)
   ami_owner     = "099720109477"
-  environment   = var.project
   stage         = var.environment
 
   # network related
@@ -90,12 +97,12 @@ module "fitstop_scheduler" {
   subnet                      = tolist(data.aws_subnet_ids.all.ids)[0]
   vpc_id                      = data.aws_vpc.default.id
 
-  # block storage
-  ebs_volume_count = var.ebs_count
-  ebs_volume_size  = var.ebs_size
-
-  # TODO:customized script
+  // TODO:customized script
   # user_data = var.bootstrap_script
+
+  tags = {
+    Name = var.scheduler_name
+  }
 }
 
 /*******************************************************************************
