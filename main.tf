@@ -10,8 +10,8 @@ provider "aws" {
 
 /*******************************************************************************
 Network Configuration
+TODO: customized VPC and subnet
 *******************************************************************************/
-# TODO: customized VPC and subnet
 data "aws_vpc" "default" {
   default = true
 }
@@ -20,55 +20,11 @@ data "aws_subnet_ids" "all" {
   vpc_id = data.aws_vpc.default.id
 }
 
-# TODO: ingress cidr block
-module "ssh_sg" {
-  source = "terraform-aws-modules/security-group/aws//modules/ssh"
-
-  name        = "ssh"
-  description = "Security group for web-server with HTTP ports open within VPC"
-
-  vpc_id              = data.aws_vpc.default.id
-  ingress_cidr_blocks = ["0.0.0.0/0"]
-}
-
-module "http_sg" {
-  source = "terraform-aws-modules/security-group/aws//modules/http-80"
-
-  name        = "http"
-  description = "Security group for ssh-server with SSH ports open within VPC"
-
-  vpc_id              = data.aws_vpc.default.id
-  ingress_cidr_blocks = ["0.0.0.0/0"]
-}
-
-module "https_sg" {
-  source = "terraform-aws-modules/security-group/aws//modules/https-443"
-
-  name        = "https"
-  description = "Security group for web-server with HTTPS ports open within VPC"
-
-  vpc_id              = data.aws_vpc.default.id
-  ingress_cidr_blocks = ["0.0.0.0/0"]
-}
-
-module "postgresql_sg" {
-  source = "terraform-aws-modules/security-group/aws//modules/postgresql"
-
-  name        = "postgresql"
-  description = "Security group for database with Postgresql ports open within VPC"
-
-  vpc_id              = data.aws_vpc.default.id
-  ingress_cidr_blocks = ["0.0.0.0/0"]
-}
-
-module "redis-sg" {
-  source = "terraform-aws-modules/security-group/aws//modules/redis"
-
-  name        = "redis"
-  description = "Security group for cache service with redis ports open within VPC"
-
-  vpc_id              = data.aws_vpc.default.id
-  ingress_cidr_blocks = ["0.0.0.0/0"]
+data "aws_security_groups" "default" {
+  filter {
+    name   = "group-name"
+    values = ["default"]
+  }
 }
 
 /*******************************************************************************
@@ -85,21 +41,23 @@ resource "aws_key_pair" "ssh" {
 }
 
 module "fitstop_backend" {
-  source = "git::https://github.com/cloudposse/terraform-aws-ec2-instance.git?ref=master"
+  source  = "cloudposse/ec2-instance/aws"
+  version = "0.14.0"
 
-  namespace     = var.project
+  namespace     = var.organization
   name          = var.backend_name
   instance_type = var.backend_type
   ssh_key_pair  = aws_key_pair.ssh.key_name
   ami           = lookup(var.amis, var.region)
   ami_owner     = "099720109477"
-  environment   = var.environment
+  environment   = var.project
   stage         = var.environment
 
   # network related
+  allowed_ports               = [22, 80, 443]
   associate_public_ip_address = true
   additional_ips_count        = var.eip_count
-  security_groups             = [module.ssh_sg.this_security_group_id, module.http_sg.this_security_group_id]
+  security_groups             = data.aws_security_groups.default.ids
   subnet                      = tolist(data.aws_subnet_ids.all.ids)[0]
   vpc_id                      = data.aws_vpc.default.id
 
@@ -109,28 +67,26 @@ module "fitstop_backend" {
 
   # TODO:customized script
   # user_data = var.bootstrap_script
-  tags = {
-    Name        = var.backend_name
-    Environment = var.environment
-  }
 }
 
 module "fitstop_scheduler" {
-  source = "git::https://github.com/cloudposse/terraform-aws-ec2-instance.git?ref=master"
+  source  = "cloudposse/ec2-instance/aws"
+  version = "0.14.0"
 
-  namespace     = var.project
+  namespace     = var.organization
   name          = var.scheduler_name
   instance_type = var.scheduler_type
   ssh_key_pair  = aws_key_pair.ssh.key_name
   ami           = lookup(var.amis, var.region)
   ami_owner     = "099720109477"
-  environment   = var.environment
+  environment   = var.project
   stage         = var.environment
 
   # network related
+  allowed_ports               = [22]
   associate_public_ip_address = true
   additional_ips_count        = var.eip_count
-  security_groups             = [module.ssh_sg.this_security_group_id]
+  security_groups             = data.aws_security_groups.default.ids
   subnet                      = tolist(data.aws_subnet_ids.all.ids)[0]
   vpc_id                      = data.aws_vpc.default.id
 
@@ -140,10 +96,6 @@ module "fitstop_scheduler" {
 
   # TODO:customized script
   # user_data = var.bootstrap_script
-  tags = {
-    Name        = var.scheduler_name
-    Environment = var.environment
-  }
 }
 
 /*******************************************************************************

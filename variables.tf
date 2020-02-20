@@ -82,3 +82,8 @@ variable "project" {
   type        = string
   description = "project name"
 }
+
+variable "organization" {
+  type        = string
+  description = "company name"
+}
