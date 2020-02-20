@@ -32,12 +32,6 @@ variable "backend_type" {
   description = "EC2 instance type for application backend"
 }
 
-variable "backend_count" {
-  type        = number
-  default     = 1
-  description = "EC2 instance number for application backend, default: 1"
-}
-
 variable "scheduler_name" {
   type        = string
   description = "EC2 instance name for application scheduler"
@@ -49,10 +43,22 @@ variable "scheduler_type" {
   description = "EC2 instance type for application scheduler"
 }
 
-variable "scheduler_count" {
+variable "eip_count" {
   type        = number
   default     = 1
-  description = "EC2 instance number for application scheduler, default: 1"
+  description = "EC2 instance eip number for each server, default: 1"
+}
+
+variable "ebs_count" {
+  type        = number
+  default     = 1
+  description = "EC2 instance ebs number for each server, default: 1"
+}
+
+variable "ebs_size" {
+  type        = number
+  default     = 10
+  description = "EC2 instance ebs size as GB, default: 10"
 }
 
 variable "ssh_key_name" {
@@ -67,7 +73,12 @@ variable "ssh_public_key" {
   description = "SSH public key"
 }
 
-variable "enviroment" {
+variable "environment" {
   type        = string
-  description = "Application runtime enviroment"
+  description = "Application runtime environment"
+}
+
+variable "project" {
+  type        = string
+  description = "project name"
 }

@@ -71,13 +71,6 @@ module "redis-sg" {
   ingress_cidr_blocks = ["0.0.0.0/0"]
 }
 
-# TODO: elastic IP
-# resource "aws_eip" "production" {
-#   count = var.backend_count + var.scheduler_count
-#   vpc = true
-# }
-
-
 /*******************************************************************************
 LoadBalancer: ELB
 *******************************************************************************/
@@ -92,48 +85,64 @@ resource "aws_key_pair" "ssh" {
 }
 
 module "fitstop_backend" {
-  source  = "terraform-aws-modules/ec2-instance/aws"
-  version = "~> 2.0"
+  source = "git::https://github.com/cloudposse/terraform-aws-ec2-instance.git?ref=master"
 
-  name           = var.backend_name
-  instance_count = var.backend_count
-  instance_type  = var.backend_type
-  key_name       = aws_key_pair.ssh.key_name
-  ami            = lookup(var.amis, var.region)
+  namespace     = var.project
+  name          = var.backend_name
+  instance_type = var.backend_type
+  ssh_key_pair  = aws_key_pair.ssh.key_name
+  ami           = lookup(var.amis, var.region)
+  ami_owner     = "099720109477"
+  environment   = var.environment
+  stage         = var.environment
 
   # network related
   associate_public_ip_address = true
-  vpc_security_group_ids      = [module.ssh_sg.this_security_group_id, module.http_sg.this_security_group_id]
-  subnet_id                   = tolist(data.aws_subnet_ids.all.ids)[0]
+  additional_ips_count        = var.eip_count
+  security_groups             = [module.ssh_sg.this_security_group_id, module.http_sg.this_security_group_id]
+  subnet                      = tolist(data.aws_subnet_ids.all.ids)[0]
+  vpc_id                      = data.aws_vpc.default.id
+
+  # block storage
+  ebs_volume_count = var.ebs_count
+  ebs_volume_size  = var.ebs_size
 
   # TODO:customized script
   # user_data = var.bootstrap_script
   tags = {
     Name        = var.backend_name
-    Environment = var.enviroment
+    Environment = var.environment
   }
 }
 
 module "fitstop_scheduler" {
-  source  = "terraform-aws-modules/ec2-instance/aws"
-  version = "~> 2.0"
+  source = "git::https://github.com/cloudposse/terraform-aws-ec2-instance.git?ref=master"
 
-  name           = var.scheduler_name
-  instance_count = var.scheduler_count
-  instance_type  = var.scheduler_type
-  key_name       = aws_key_pair.ssh.key_name
-  ami            = lookup(var.amis, var.region)
+  namespace     = var.project
+  name          = var.scheduler_name
+  instance_type = var.scheduler_type
+  ssh_key_pair  = aws_key_pair.ssh.key_name
+  ami           = lookup(var.amis, var.region)
+  ami_owner     = "099720109477"
+  environment   = var.environment
+  stage         = var.environment
 
   # network related
   associate_public_ip_address = true
-  vpc_security_group_ids      = [module.ssh_sg.this_security_group_id]
-  subnet_id                   = tolist(data.aws_subnet_ids.all.ids)[0]
+  additional_ips_count        = var.eip_count
+  security_groups             = [module.ssh_sg.this_security_group_id]
+  subnet                      = tolist(data.aws_subnet_ids.all.ids)[0]
+  vpc_id                      = data.aws_vpc.default.id
+
+  # block storage
+  ebs_volume_count = var.ebs_count
+  ebs_volume_size  = var.ebs_size
 
   # TODO:customized script
   # user_data = var.bootstrap_script
   tags = {
     Name        = var.scheduler_name
-    Environment = var.enviroment
+    Environment = var.environment
   }
 }
 
